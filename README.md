@@ -3,8 +3,52 @@ Regression with Sklearn
 
 # Data Preprocessing
 
-Thankfully, there was not much data preprocessing required. There were no missing values, thus data imputation/deletion was not required. Moreover, the continuous values seemed to already be normalized between 0 and 1. The only data preprocessing that was required was one-hot encoding the color and type columns. I did this by using the pandas get_dummies method.
+The first step of data preprocessing I took was deleting the columns I knew I did not
+need. The “id” column simply is used as an index and does not provide any additional
+information, so that column was dropped. The “dropoff_datetime” was not included in the test
+data (because having the pickup and drop off times would make this a really easy problem), so
+that column was also dropped.Next, I checked for any missing values. Luckily, the data had no
+missing values, so I did not have to impute or remove any additional data.
+Then, I had to deal with the datetime values contained within the “pickup_datetime”
+column. I had never dealt with datetime values before, however, I knew if I left them as is, the
+model would likely treat them as categorical variables, with each time being a different category.
+This would be bad, because time is continuous. Instead of trying to reform the data in a way to
+let the model know that it is continuous, I just reduced the number of categories. I did this by
+binning the times according to the season (winter, spring, summer, fall) and time of day
+(morning, midday, night). I also encoded the columns “vendor_id” and “store_and_fwd_flag” to
+be binary (0 or 1).
+The final step of data preprocessing was to determine which features were actually
+adding information and which features could be dropped. Usually, I would forgo this step, but
+there was a lot of data, so I was concerned about runtime. I used the random forest algorithm to
+rank feature importances, and determine which features were not adding any additional
+information. I determined the ‘store_and_fwd_flag’, ‘fall’, ‘winter’, and ‘morning’ columns could
+be dropped. The ‘fall’, ‘winter’, and ‘morning’ columns make sense to drop, because the other
+corresponding season and time of day columns probably contain enough information to make
+these columns redundant.
+I also tried to change the longitude and latitude to distance values by taking the
+euclidean distance. I thought this might have a strong linear relationship with trip duration,
+however I was incorrect and there was very little correlation, so I just left the longitude and
+latitude values as is.
 
-# Model Building and Fine-Tuning
+# Model building
 
-I tried many different model’s for this task: SVC, Nearest Neighbors, Random Forest, and a basic feed forward neural network. Initially, I used sklearn to implement SVC, Nearest Neighbors, and Random Forest, using cross-validation to evaluate each model. I found that Random Forest outperformed SVC and Nearest Neighbors by a large margin (about a 35% accuracy difference. Thus, I attempted to fine tune the Random Forest algorithm by itself. I tried to find the optimal values for the number of estimators (50, 100, 250, 500), maximum depths (1, 2, 3), and the cutoff criteria (gini or entropy). After doing this, I realized both of the two highest scores had a max depth of 3, so I increased the search range for max depth. I found the best pairing of parameters was a max depth of 4, 50 estimators, paired with the ‘gini’ criterion. I then tried to build a neural network using Pytorch. I ended up creating two neural networks with similar accuracies to the Random Forest algorithm, in an attempt to build a voting classifier. However, when I saved the file, the model accuracies were very different from what I found while training the model. For some reason, the training of the neural network was very unreliable and the performance varied dramatically. Thus, I ended up only using a Random Forest Classifier, with a validation accuracy of around 71%.
+I tried many different models, however, it was very difficult to find a good model (an
+R-squared value above .7). All the models were scored using cross-validation, and compared
+using the R-squared metric. Initially, I tried random forest regression, nearest neighbors
+regression, elastic net, ridge regression, and lasso regression. The only model that scored
+above .01 was elastic net. Next I tried using a linear SVM, paired with Nystreom transformation.
+This model, too, performed very poorly, although better than the elastic net model. I was getting
+a bit hopeless at this point. Finally, I tried a regular SVM. However, because this model takes
+awhile to run, I only used a random sample of 20,000 pieces of data. With only 20,000 pieces of
+data, this model performed much better than the other models. However, it still had a very low
+R-squared score (around .03).
+My plan then became to tune the hyperparameters for one SVM with minimal data, then
+to scale up the amount of data. I found the best value of C to be 100 and the best value of
+epsilon to be .001 with 20,000 pieces of data. I then performed cross-validation with 400,000
+pieces of data. This turned out to be a bad plan, though, because different amounts of data
+affect how much regularization the model requires. Thus, the model with 400,000 pieces of data
+performed much worse. My plan then became to train 10 SVR models with 20,000 pieces of
+data, then combine the prediction using a sklearn’s voting regressor. This plan also did not go
+well, and the model ended up performing very poorly. Finally, I decided to train 20 SVR models
+on 20,000 different random samples of data, then to take the mean. I was able to get a final
+score of 
