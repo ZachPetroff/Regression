@@ -1,7 +1,4 @@
-# Regression
-Regression with Sklearn
 
-# Data Preprocessing
 
 The first step of data preprocessing I took was deleting the columns I knew I did not
 need. The “id” column simply is used as an index and does not provide any additional
